@@ -207,15 +207,16 @@ func getImageSizeFromFile(filename string) (data image.Config, err error) {
 
 func main() {
 	path := flag.String("path", "", "A image file or directory path")
+	output := flag.String("output", "", "Result output directory path")
 	flag.Parse()
 
-	if len(*path) == 0 {
+	if len(*path) == 0 || len(*output) == 0 {
 		flag.PrintDefaults()
 
 		return
 	}
 
-	os.Mkdir("result", os.ModePerm)
+	os.MkdirAll(*output, os.ModePerm)
 
 	if err := filepath.Walk(*path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -262,7 +263,7 @@ func main() {
 				for _, i := range data {
 					if justcopy {
 						log.Printf("[%s] High resolution image does not found, so just copyed: %s", path, i.URL)
-						if err := ioutil.WriteFile(fmt.Sprintf("result/%s", info.Name()), i.Body, os.ModePerm); err != nil {
+						if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, info.Name()), i.Body, os.ModePerm); err != nil {
 							fmt.Println(err)
 						}
 
@@ -280,7 +281,7 @@ func main() {
 					newFilename := strings.ReplaceAll(info.Name(), filepath.Ext(path), "."+imageInfo.Extension)
 
 					log.Printf("[%s] Saving high resolution image...", path)
-					if err := ioutil.WriteFile(fmt.Sprintf("result/%s", newFilename), imageInfo.Body, os.ModePerm); err != nil {
+					if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, newFilename), imageInfo.Body, os.ModePerm); err != nil {
 						fmt.Println(err)
 					}
 					log.Printf("[%s] Saved: %s (%dx%d -> %dx%d)", path, newFilename, imageSize.Width, imageSize.Height, imageInfo.Size.Width, imageInfo.Size.Height)
