@@ -216,7 +216,11 @@ func main() {
 		return
 	}
 
-	os.MkdirAll(*output, os.ModePerm)
+	if err := os.MkdirAll(*output, os.ModePerm); err != nil {
+		log.Println("output path must be directory")
+
+		return
+	}
 
 	if err := filepath.Walk(*path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
