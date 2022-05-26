@@ -208,6 +208,7 @@ func getImageSizeFromFile(filename string) (data image.Config, err error) {
 func main() {
 	path := flag.String("path", "", "A image file or directory path")
 	output := flag.String("output", "", "Result output directory path")
+	copyInput := flag.Bool("copy", true, "Copy the original image if not higher resolution available")
 	flag.Parse()
 
 	if len(*path) == 0 || len(*output) == 0 {
@@ -265,7 +266,7 @@ func main() {
 				}
 
 				for _, i := range data {
-					if justcopy {
+					if justcopy && *copyInput {
 						log.Printf("[%s] High resolution image does not found, so just copyed: %s", path, i.URL)
 						if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, info.Name()), i.Body, os.ModePerm); err != nil {
 							fmt.Println(err)
