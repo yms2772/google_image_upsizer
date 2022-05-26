@@ -33,8 +33,10 @@ type imageData struct {
 
 var client = &http.Client{}
 
-var errNoLargerAvailable = errors.New("there is no large image")
-var errCaptcha = errors.New("response was captcha page")
+var (
+    errNoLargerAvailable = errors.New("there is no large image")
+    errCaptcha           = errors.New("response was captcha page")
+)
 
 func uploadImage(filename string) (contents []byte, err error) {
 	file, err := os.Open(filename)
