@@ -248,13 +248,13 @@ func main() {
 		if !info.IsDir() {
 			switch filepath.Ext(path) {
 			case ".jpg", ".png", ".jpeg":
-				log.Info("[%s] Getting original image info...", path)
+				log.Infof("[%s] Getting original image info...", path)
 				imageSize, err := getImageSizeFromFile(path)
 				if err != nil {
 					return err
 				}
 
-				log.Info("[%s] Uploading to google image server...", path)
+				log.Infof("[%s] Uploading to google image server...", path)
 				contents, err := uploadImage(path)
 				if err != nil {
 					log.Fatal(err)
@@ -286,7 +286,7 @@ func main() {
 
 				for _, i := range data {
 					if justcopy && *copyInput {
-						log.Warn("[%s] High resolution image does not found, so just copyed: %s", path, i.URL)
+						log.Warnf("[%s] High resolution image does not found, so just copyed: %s", path, i.URL)
 						if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, info.Name()), i.Body, os.ModePerm); err != nil {
 							log.Error(err)
 						}
@@ -294,7 +294,7 @@ func main() {
 						break
 					}
 
-					log.Info("[%s] Image URL: %s", path, i.URL)
+					log.Infof("[%s] Image URL: %s", path, i.URL)
 					imageInfo, err := getImage(i.URL)
 					if err != nil {
 						log.Warn("This URL is not available, so try again with another URL")
@@ -303,16 +303,16 @@ func main() {
 
 					newFilename := strings.ReplaceAll(info.Name(), filepath.Ext(path), "."+imageInfo.Extension)
 
-					log.Info("[%s] Saving high resolution image...", path)
+					log.Infof("[%s] Saving high resolution image...", path)
 					if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, newFilename), imageInfo.Body, os.ModePerm); err != nil {
 						log.Error(err)
 					}
-					log.Info("[%s] Saved: %s (%dx%d -> %dx%d)", path, newFilename, imageSize.Width, imageSize.Height, imageInfo.Size.Width, imageInfo.Size.Height)
+					log.Infof("[%s] Saved: %s (%dx%d -> %dx%d)", path, newFilename, imageSize.Width, imageSize.Height, imageInfo.Size.Width, imageInfo.Size.Height)
 
 					break
 				}
 			default:
-				log.Info("[%s] Skip !", path)
+				log.Infof("[%s] Skip !", path)
 			}
 		}
 
