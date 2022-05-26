@@ -208,7 +208,7 @@ func getImageSizeFromFile(filename string) (data image.Config, err error) {
 func main() {
 	path := flag.String("path", "", "A image file or directory path")
 	output := flag.String("output", "", "Result output directory path")
-	copyInput := flag.Bool("copy", true, "Copy the original image if not higher resolution available, (default: true)")
+	copyInput := flag.Bool("copy", true, "Copy the original image if not higher resolution available")
 	flag.Parse()
 
 	if len(*path) == 0 || len(*output) == 0 {
