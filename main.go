@@ -318,6 +318,6 @@ func main() {
 
 		return nil
 	}); err != nil {
-		log.Errorf("please change the file or directory path and try again, err: %w", err)
+		log.Error("please change the file or directory path and try again")
 	}
 }
