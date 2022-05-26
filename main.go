@@ -10,7 +10,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -20,6 +19,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type imageData struct {
@@ -31,6 +32,9 @@ type imageData struct {
 }
 
 var client = &http.Client{}
+
+var errNoLargerAvailable = errors.New("there is no large image")
+var errCaptcha = errors.New("response was captcha page")
 
 func uploadImage(filename string) (contents []byte, err error) {
 	file, err := os.Open(filename)
@@ -132,8 +136,10 @@ func getImageList(contents []byte) (data []*imageData, err error) {
 		}
 	}
 
-	if len(largeImgURL) == 0 {
-		return nil, errors.New("there is no large image")
+	if len(largeImgURL) == 0 && bytes.Contains(contents, []byte("captcha")) {
+		return nil, errCaptcha
+	} else if len(largeImgURL) == 0 {
+		return nil, errNoLargerAvailable
 	}
 
 	req, err := http.NewRequest(http.MethodGet, largeImgURL, nil)
@@ -209,7 +215,19 @@ func main() {
 	path := flag.String("path", "", "A image file or directory path")
 	output := flag.String("output", "", "Result output directory path")
 	copyInput := flag.Bool("copy", true, "Copy the original image if not higher resolution available")
+	logLevel := flag.String("log-level", "error", "Set the level of log output: (info, warn, error)")
 	flag.Parse()
+
+	switch strings.ToLower(*logLevel) {
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		flag.PrintDefaults()
+	}
 
 	if len(*path) == 0 || len(*output) == 0 {
 		flag.PrintDefaults()
@@ -218,8 +236,7 @@ func main() {
 	}
 
 	if err := os.MkdirAll(*output, os.ModePerm); err != nil {
-		log.Println("output path must be directory")
-
+		log.Error("output path must be directory")
 		return
 	}
 
@@ -231,23 +248,23 @@ func main() {
 		if !info.IsDir() {
 			switch filepath.Ext(path) {
 			case ".jpg", ".png", ".jpeg":
-				log.Printf("[%s] Getting original image info...", path)
+				log.Info("[%s] Getting original image info...", path)
 				imageSize, err := getImageSizeFromFile(path)
 				if err != nil {
 					return err
 				}
 
-				log.Printf("[%s] Uploading to google image server...", path)
+				log.Info("[%s] Uploading to google image server...", path)
 				contents, err := uploadImage(path)
 				if err != nil {
-					panic(err)
+					log.Fatal(err)
 				}
 
 				justcopy := false
 
 				data, err := getImageList(contents)
 				if err != nil {
-					if err.Error() == "there is no large image" {
+					if errors.Is(errNoLargerAvailable, err) {
 						justcopy = true
 						file, _ := os.Open(path)
 
@@ -260,46 +277,47 @@ func main() {
 							Extension: filepath.Ext(path),
 							Size:      imageSize,
 						})
+					} else if errors.Is(errCaptcha, err) {
+						log.Fatal("received a captcha page, stopping")
 					} else {
-						panic(err)
+						log.Fatal(err)
 					}
 				}
 
 				for _, i := range data {
 					if justcopy && *copyInput {
-						log.Printf("[%s] High resolution image does not found, so just copyed: %s", path, i.URL)
+						log.Warn("[%s] High resolution image does not found, so just copyed: %s", path, i.URL)
 						if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, info.Name()), i.Body, os.ModePerm); err != nil {
-							fmt.Println(err)
+							log.Error(err)
 						}
 
 						break
 					}
 
-					log.Printf("[%s] Image URL: %s", path, i.URL)
+					log.Info("[%s] Image URL: %s", path, i.URL)
 					imageInfo, err := getImage(i.URL)
 					if err != nil {
-						log.Printf("This URL is not available, so try again with another URL")
-
+						log.Warn("This URL is not available, so try again with another URL")
 						continue
 					}
 
 					newFilename := strings.ReplaceAll(info.Name(), filepath.Ext(path), "."+imageInfo.Extension)
 
-					log.Printf("[%s] Saving high resolution image...", path)
+					log.Info("[%s] Saving high resolution image...", path)
 					if err := ioutil.WriteFile(fmt.Sprintf("%s/%s", *output, newFilename), imageInfo.Body, os.ModePerm); err != nil {
-						fmt.Println(err)
+						log.Error(err)
 					}
-					log.Printf("[%s] Saved: %s (%dx%d -> %dx%d)", path, newFilename, imageSize.Width, imageSize.Height, imageInfo.Size.Width, imageInfo.Size.Height)
+					log.Info("[%s] Saved: %s (%dx%d -> %dx%d)", path, newFilename, imageSize.Width, imageSize.Height, imageInfo.Size.Width, imageInfo.Size.Height)
 
 					break
 				}
 			default:
-				log.Printf("[%s] Skip !", path)
+				log.Info("[%s] Skip !", path)
 			}
 		}
 
 		return nil
 	}); err != nil {
-		log.Println(errors.New("please change the file or directory path and try again"))
+		log.Errorf("please change the file or directory path and try again, err: %w", err)
 	}
 }
