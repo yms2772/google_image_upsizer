@@ -34,8 +34,8 @@ type imageData struct {
 var client = &http.Client{}
 
 var (
-    errNoLargerAvailable = errors.New("there is no large image")
-    errCaptcha           = errors.New("response was captcha page")
+	errNoLargerAvailable = errors.New("there is no large image")
+	errCaptcha           = errors.New("response was captcha page")
 )
 
 func uploadImage(filename string) (contents []byte, err error) {
@@ -61,11 +61,23 @@ func uploadImage(filename string) (contents []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	part.Write(fileContents)
+	_, err = part.Write(fileContents)
+	if err != nil {
+		return nil, err
+	}
 
-	writer.WriteField("image_url", "")
-	writer.WriteField("filename", "")
-	writer.WriteField("hl", "ko")
+	err = writer.WriteField("image_url", "")
+	if err != nil {
+		return nil, err
+	}
+	err = writer.WriteField("filename", "")
+	if err != nil {
+		return nil, err
+	}
+	err = writer.WriteField("hl", "ko")
+	if err != nil {
+		return nil, err
+	}
 
 	if err := writer.Close(); err != nil {
 		return nil, err
